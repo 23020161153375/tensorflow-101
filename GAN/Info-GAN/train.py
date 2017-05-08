@@ -24,7 +24,9 @@ batch_size = 32   # batch size
 cat_dim = 10  # total categorical factor
 con_dim = 2  # total continuous factor
 rand_dim = 38  
-num_epochs = 30
+
+#no ettect
+num_epochs = 30 
 debug_max_steps = 1000
 save_epoch = 5
 max_epochs = 50
@@ -55,6 +57,7 @@ y_disc = tf.concat(axis=0, values=[y, y * 0])
 #
 
 # get random class number
+#fget a random  class number for each minibatch given the class  probability distrubution 
 z_cat = tf.multinomial(tf.ones((batch_size, cat_dim), dtype=tf.float32) / cat_dim, 1)
 z_cat = tf.squeeze(z_cat, -1)
 z_cat = tf.cast(z_cat, tf.int32)
@@ -63,6 +66,7 @@ z_cat = tf.cast(z_cat, tf.int32)
 z_con = tf.random_normal((batch_size, con_dim))
 z_rand = tf.random_normal((batch_size, rand_dim))
 
+#rolled into a input tenosr with the shape of batchsize * (cat_dim + con_dim +  rand_dim)
 z = tf.concat(axis=1, values=[tf.one_hot(z_cat, depth = cat_dim), z_con, z_rand])
 
 
@@ -79,6 +83,9 @@ tf.summary.image('fake', gen)
 disc_real, _, _ = discriminator(x)
 disc_fake, cat_fake, con_fake = discriminator(gen)
 
+# While the calc of loss is not identical to the formula as being posted in the article ,
+# the thought behind reamins the same in terms of adversarial  
+
 # discriminator loss
 loss_d_r = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_real, labels=y_real))
 loss_d_f = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_fake, labels=y_fake))
@@ -86,6 +93,9 @@ loss_d = (loss_d_r + loss_d_f) / 2
 print 'loss_d', loss_d.get_shape()
 # generator loss
 loss_g = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_fake, labels=y_real))
+
+# the lower bound for the mutual information term 
+# and note how we make sure random c distributed with p(c) (see the article)
 
 # categorical factor loss
 loss_c = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=cat_fake, labels=z_cat))
@@ -125,7 +135,7 @@ with tf.Session() as sess:
                 print 'cur epoch {0} update l_d step {1}, loss_disc {2}, loss_gen {3}'.format(cur_epoch, l_d_step, l_disc, l_gen)
                 if cur_epoch % save_epoch == 0:
                     # save
-                    saver.save(sess, os.path.join('./checkpoint_dir', 'ac_gan'), global_step=l_d_step)
+                    saver.save(sess, os.path.join('./checkpoint_dir', 'Info_gan'), global_step=l_d_step)
     except tf.errors.OutOfRangeError:
         print 'Train Finished'
     finally:
